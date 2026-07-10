@@ -1,0 +1,82 @@
+version: '3.8'
+
+# ====================================================================
+# BlogSphere API — Docker Compose
+# ====================================================================
+# Services:
+#   mysql-db    — MySQL 8 database
+#   blogsphere  — Spring Boot API application
+#
+# Usage:
+#   docker-compose up -d         # Start all services in background
+#   docker-compose logs -f       # Follow logs
+#   docker-compose down          # Stop and remove containers
+#   docker-compose down -v       # Also remove volumes (clears DB)
+# ====================================================================
+
+services:
+
+  # ── MySQL Database ─────────────────────────────────────────────────
+  mysql-db:
+    image: mysql:8.0
+    container_name: blogsphere-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: blogsphere_db
+      MYSQL_USER: blogsphere
+      MYSQL_PASSWORD: blogsphere_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - blogsphere-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=root"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Spring Boot Application ────────────────────────────────────────
+  blogsphere-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blogsphere-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/blogsphere_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      # JPA
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+      # JWT
+      APP_JWT_SECRET: blogsphere-super-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm
+      APP_JWT_EXPIRATION: 86400000
+      # File Upload
+      APP_FILE_UPLOAD_DIR: /app/uploads/images
+    volumes:
+      - image_uploads:/app/uploads/images
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - blogsphere-network
+
+# ── Volumes ───────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local
+  image_uploads:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────
+networks:
+  blogsphere-network:
+    driver: bridge
