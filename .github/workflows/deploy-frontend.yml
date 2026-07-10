@@ -1,0 +1,44 @@
+name: Deploy Frontend to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm ci || npm install
+
+      - name: Build Application
+        run: |
+          cd frontend
+          # Update base path in build for subfolder hosting on GitHub Pages
+          # Vite index.html will expect assets relative to repo name (e.g. /blogsphere-api/)
+          npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          VITE_API_URL: https://blogsphere-api.onrender.com/api # Placeholder or your hosted backend API URL
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: frontend/dist
+          branch: gh-pages
