@@ -38,12 +38,13 @@ RUN mkdir -p uploads/images && chown -R blogsphere:blogsphere /app
 
 USER blogsphere
 
-# Expose application port
-EXPOSE 8080
+# Expose application port (Render injects PORT dynamically at runtime)
+ENV PORT=8080
+EXPOSE ${PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:${PORT}/actuator/health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", \
