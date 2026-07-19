@@ -10,13 +10,25 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request Interceptor: Attach token if available
+// Request Interceptor: Attach token + log full URL for debugging
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // ── DEBUG: log the exact URL being sent ──────────────────────────
+    const base = config.baseURL || '';
+    const url  = config.url || '';
+    const params = config.params
+      ? '?' + new URLSearchParams(config.params).toString()
+      : '';
+    console.debug(
+      `[Axios] ${config.method?.toUpperCase()} → ${base}${url}${params}`,
+      '\n  baseURL:', base,
+      '\n  VITE_API_URL:', import.meta.env.VITE_API_URL
+    );
+    // ─────────────────────────────────────────────────────────────────
     return config;
   },
   (error) => {
@@ -38,10 +50,10 @@ axiosInstance.interceptors.response.use(
         
         // Only redirect if not already on login/register pages
         if (
-          window.location.pathname !== '/login' && 
-          window.location.pathname !== '/register'
+          !window.location.pathname.endsWith('/login') &&
+          !window.location.pathname.endsWith('/register')
         ) {
-          window.location.href = '/login?expired=true';
+          window.location.href = `${import.meta.env.BASE_URL}login?expired=true`;
         }
       }
     }

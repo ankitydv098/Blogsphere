@@ -35,7 +35,7 @@ jobs:
           # Vite index.html will expect assets relative to repo name (e.g. /blogsphere-api/)
           npm run build -- --base=/${{ github.event.repository.name }}/
         env:
-          VITE_API_URL: https://blogsphere-api.onrender.com/api # Placeholder or your hosted backend API URL
+          VITE_API_URL: https://blogsphere-api.onrender.com
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4

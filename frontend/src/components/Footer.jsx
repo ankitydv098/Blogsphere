@@ -13,7 +13,7 @@ const Footer = () => {
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-primary-500 justify-center">
             <Link to="/" className="hover:text-primary-900 transition-colors">Home</Link>
-            <a href="http://localhost:8080/swagger-ui.html" target="_blank" rel="noopener noreferrer" className="hover:text-primary-900 transition-colors">API Docs</a>
+            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/swagger-ui.html`} target="_blank" rel="noopener noreferrer" className="hover:text-primary-900 transition-colors">API Docs</a>
             <span className="cursor-default">About</span>
             <span className="cursor-default">Privacy</span>
             <span className="cursor-default">Terms</span>
