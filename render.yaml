@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: blogsphere-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: https://ankitydv098.github.io,http://localhost:5173,http://127.0.0.1:5173
+      - key: APP_JWT_SECRET
+        value: blogsphere-super-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm
