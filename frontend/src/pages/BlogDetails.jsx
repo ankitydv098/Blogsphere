@@ -1,264 +1,342 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getPostById, getPostComments, addComment, deleteComment } from '../api/postApi';
-import { AuthContext } from '../context/AuthContext';
+import { getPostById, getPostComments, addComment } from '../api/postApi';
+import { mockService } from '../mock/mockService';
 import Loader from '../components/Loader';
-import Button from '../components/Button';
-import { Calendar, User, MessageSquare, Trash2, ArrowLeft, Send } from 'lucide-react';
-import toast from 'react-hot-toast';
+import BlogCard from '../components/BlogCard';
+import confetti from 'canvas-confetti';
+import { ThumbsUp, Bookmark, Share2, Clock, Calendar, ArrowLeft, MessageSquare, Send, Check, User, Sparkles, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const BlogDetails = () => {
   const { id } = useParams();
-  const { user, isAuthenticated, isAdmin } = useContext(AuthContext);
+  const navigate = useNavigate();
   
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
-  const [commentContent, setCommentContent] = useState('');
-  
+  const [relatedPosts, setRelatedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  const navigate = useNavigate();
+  const [claps, setClaps] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-  // Fetch Post details & Comments
+  // Scroll Progress listener
   useEffect(() => {
-    const fetchPostData = async () => {
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        const current = (window.scrollY / totalHeight) * 100;
+        setScrollProgress(current);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchPostDetails = async () => {
       setLoading(true);
       try {
-        const postData = await getPostById(id);
-        setPost(postData);
-        
-        const commentsData = await getPostComments(id);
-        setComments(commentsData);
+        const data = await getPostById(id);
+        setPost(data);
+        setClaps(data.claps || 0);
+
+        const comms = await getPostComments(id);
+        setComments(comms || []);
+
+        // Bookmarks check
+        const bookmarks = mockService.getBookmarks();
+        setIsBookmarked(bookmarks.includes(Number(id)));
+
+        // Related posts
+        const allPostsRes = await mockService.getPosts(0, 4);
+        const related = (allPostsRes.content || []).filter(p => p.id !== Number(id)).slice(0, 2);
+        setRelatedPosts(related);
       } catch (error) {
-        toast.error('Failed to load article details');
-        navigate('/');
+        console.error('Failed to load post details', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchPostData();
-  }, [id, navigate]);
+    fetchPostDetails();
+    window.scrollTo(0, 0);
+  }, [id]);
 
-  // Format Date Helper
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
+  const handleClap = async () => {
+    setClaps(prev => prev + 1);
+    confetti({
+      particleCount: 40,
+      spread: 60,
+      origin: { y: 0.85 }
     });
+    await mockService.toggleClap(id);
   };
 
-  // Cover Image URL mapper
-  const getImageUrl = (imageName) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    if (!imageName || imageName === 'default.png') {
-      return 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1200&auto=format&fit=crop';
-    }
-    return `${baseUrl}/api/images/${imageName}`;
+  const handleBookmark = async () => {
+    const newState = await mockService.toggleBookmark(id);
+    setIsBookmarked(newState);
   };
 
-  // Initials for avatar fallback
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
-  // Add comment submit handler
-  const handleCommentSubmit = async (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!commentContent.trim()) return;
+    if (!commentText.trim()) return;
 
-    setCommentLoading(true);
+    setIsSubmittingComment(true);
     try {
-      const newComment = await addComment(id, { content: commentContent.trim() });
-      setComments([newComment, ...comments]); // Prepend comment
-      setCommentContent('');
-      toast.success('Comment added successfully!');
-    } catch (error) {
-      toast.error('Failed to add comment');
+      const newComment = await addComment(id, commentText);
+      setComments(prev => [newComment, ...prev]);
+      setCommentText('');
+    } catch (err) {
+      console.error('Failed to add comment', err);
     } finally {
-      setCommentLoading(false);
+      setIsSubmittingComment(false);
     }
   };
 
-  // Delete comment handler
-  const handleCommentDelete = async (commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+  if (loading) {
+    return <Loader type="detail" />;
+  }
 
-    try {
-      await deleteComment(commentId);
-      setComments(comments.filter((c) => c.id !== commentId));
-      toast.success('Comment deleted successfully!');
-    } catch (error) {
-      toast.error('Failed to delete comment');
-    }
-  };
+  if (!post) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Article not found</h2>
+        <Link to="/" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Return to Home Feed
+        </Link>
+      </div>
+    );
+  }
 
-  // Helper check for comment deletion permissions
-  const canDeleteComment = (commentUser) => {
-    if (!user) return false;
-    // Authorized if owner of the comment OR admin
-    return commentUser.email === user.email || isAdmin();
-  };
-
-  if (loading) return <Loader type="details" />;
-  if (!post) return null;
+  const formattedDate = new Date(post.createdAt).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      
-      {/* Back button */}
-      <button 
-        onClick={() => navigate(-1)} 
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-500 hover:text-primary-900 mb-8 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
-
-      {/* Article Header */}
-      <header className="space-y-6">
-        
-        {/* Category Badge */}
-        {post.category && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary-100 text-primary-800">
-            {post.category.categoryName}
-          </span>
-        )}
-
-        {/* Title */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-primary-900 leading-tight">
-          {post.title}
-        </h1>
-
-        {/* Author Info Panel */}
-        <div className="flex items-center gap-3 border-y border-primary-100 py-4">
-          <div className="h-10 w-10 rounded-full bg-primary-900 text-white flex items-center justify-center font-bold text-sm">
-            {getInitials(post.user?.name)}
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-primary-800">
-              <Link to={`/profile/${post.user?.id}`} className="hover:underline">
-                {post.user?.name || 'Anonymous'}
-              </Link>
-            </h3>
-            <p className="text-xs text-primary-500 flex items-center gap-2">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {formatDate(post.createdAt)}
-              </span>
-            </p>
-          </div>
-        </div>
-
-      </header>
-
-      {/* Cover Image */}
-      <div className="my-8 rounded-2xl overflow-hidden bg-primary-50 border border-primary-100 max-h-[450px]">
-        <img
-          src={getImageUrl(post.imageName)}
-          alt={post.title}
-          className="w-full h-full object-cover"
-        />
+    <>
+      {/* Top Reading Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-800 z-50">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 transition-all duration-150"
+          style={{ width: `${scrollProgress}%` }}
+        ></div>
       </div>
 
-      {/* Body Content */}
-      <article className="prose prose-slate max-w-none text-primary-850 text-base md:text-lg leading-relaxed space-y-6">
-        {post.content.split('\n').map((paragraph, index) => {
-          if (!paragraph.trim()) return null;
-          return <p key={index}>{paragraph}</p>;
-        })}
-      </article>
-
-      {/* Comment Section Divider */}
-      <section className="mt-16 pt-8 border-t border-primary-100 space-y-8">
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         
-        <h2 className="text-xl font-black text-primary-900 flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Responses ({comments.length})
-        </h2>
+        {/* Back Link */}
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Feed</span>
+        </button>
 
-        {/* New Comment Form */}
-        {isAuthenticated ? (
-          <form onSubmit={handleCommentSubmit} className="space-y-3">
-            <div className="relative">
-              <textarea
-                placeholder="What are your thoughts?"
-                rows="3"
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                className="w-full bg-primary-50 border border-primary-200 rounded-2xl py-3 px-4 pr-12 text-sm focus:outline-none focus:ring-1 focus:ring-primary-900 focus:border-primary-900 resize-none"
-              />
-              <button
-                type="submit"
-                disabled={!commentContent.trim() || commentLoading}
-                className="absolute right-4.5 bottom-4 p-1.5 text-primary-500 hover:text-primary-900 hover:bg-primary-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="h-4.5 w-4.5" />
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4 text-center">
-            <p className="text-sm text-primary-600">
-              Please{' '}
-              <Link to="/login" className="font-bold text-primary-900 hover:underline">
-                Sign In
-              </Link>{' '}
-              to participate in the discussion.
-            </p>
+        {/* Hero Header */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            {post.category && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50">
+                {post.category.categoryName}
+              </span>
+            )}
+            <span className="text-xs text-slate-400 font-medium">•</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {post.readTime}
+            </span>
           </div>
-        )}
 
-        {/* Comments List */}
-        <div className="space-y-6 pt-4">
-          {comments.length === 0 ? (
-            <p className="text-sm text-primary-400 italic text-center py-6">
-              No responses yet. Be the first to share your thoughts!
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="p-4 bg-primary-50/50 rounded-2xl border border-primary-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-primary-200 flex items-center justify-center font-bold text-[10px]">
-                        {getInitials(comment.user?.name)}
-                      </div>
-                      <span className="text-xs font-bold text-primary-800">{comment.user?.name}</span>
-                      <span className="text-[10px] text-primary-400">{formatDate(comment.createdAt)}</span>
-                    </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-50 tracking-tight leading-tight">
+            {post.title}
+          </h1>
 
-                    {canDeleteComment(comment.user) && (
-                      <button
-                        onClick={() => handleCommentDelete(comment.id)}
-                        className="p-1 text-primary-400 hover:text-red-600 rounded transition-colors"
-                        title="Delete Comment"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-sm text-primary-700 pl-8 leading-relaxed whitespace-pre-wrap">
-                    {comment.content}
-                  </p>
-                </div>
-              ))}
+          {/* Author Card */}
+          <div className="flex flex-wrap items-center justify-between gap-4 py-4 border-y border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <Link to={`/profile/${post.user?.id}`}>
+                <img
+                  src={post.user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80'}
+                  alt={post.user?.name}
+                  className="h-12 w-12 rounded-full object-cover ring-2 ring-indigo-500/20"
+                />
+              </Link>
+              <div>
+                <Link to={`/profile/${post.user?.id}`} className="text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 transition-colors block">
+                  {post.user?.name}
+                </Link>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{post.user?.bio || 'Software Architect'}</p>
+              </div>
             </div>
-          )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsFollowing(!isFollowing)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                  isFollowing
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20'
+                }`}
+              >
+                {isFollowing ? 'Following' : '+ Follow Author'}
+              </button>
+
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <button
+                  onClick={handleBookmark}
+                  className={`p-2 rounded-full transition-colors ${
+                    isBookmarked
+                      ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-indigo-600 dark:fill-indigo-400' : ''}`} />
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Share2 className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-      </section>
+        {/* Cover Image */}
+        <div className="rounded-3xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 max-h-[480px]">
+          <img
+            src={post.imageName}
+            alt={post.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
 
-    </div>
+        {/* Article Main Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* Article Body */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="prose dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 leading-relaxed font-normal space-y-4">
+              {post.content.split('\n\n').map((paragraph, idx) => {
+                if (paragraph.startsWith('### ')) {
+                  return <h3 key={idx} className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-6 mb-2">{paragraph.replace('### ', '')}</h3>;
+                }
+                if (paragraph.startsWith('```')) {
+                  const lines = paragraph.split('\n');
+                  const code = lines.slice(1, -1).join('\n');
+                  return (
+                    <div key={idx} className="my-4 rounded-2xl bg-slate-950 text-slate-100 p-4 font-mono text-xs overflow-x-auto border border-slate-800 shadow-lg">
+                      <pre><code>{code}</code></pre>
+                    </div>
+                  );
+                }
+                return <p key={idx} className="text-base text-slate-700 dark:text-slate-300 leading-relaxed">{paragraph}</p>;
+              })}
+            </div>
+
+            {/* Claps Celebration Banner */}
+            <div className="py-8 my-10 border-y border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 rounded-3xl p-6">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Did you find this architectural deep dive valuable?</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Give a clap to support the author and boost visibility.</p>
+              </div>
+              <button
+                onClick={handleClap}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 hover:scale-105 transition-all duration-200"
+              >
+                <ThumbsUp className="h-4 w-4 fill-white" />
+                <span>{claps} Claps</span>
+              </button>
+            </div>
+
+            {/* Comments Section */}
+            <div className="space-y-6 pt-4">
+              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                Discussion ({comments.length})
+              </h3>
+
+              {/* Add Comment Form */}
+              <form onSubmit={handleAddComment} className="space-y-3">
+                <textarea
+                  rows={3}
+                  placeholder="What are your thoughts on this architecture?"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-2xl p-4 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none transition-colors"
+                ></textarea>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingComment || !commentText.trim()}
+                    className="px-5 py-2 rounded-full font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Post Comment</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Comments List */}
+              <div className="space-y-4 pt-2">
+                {comments.map((c) => (
+                  <div key={c.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={c.user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80'}
+                          alt={c.user?.name}
+                          className="h-7 w-7 rounded-full object-cover"
+                        />
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{c.user?.name}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-normal leading-relaxed pl-9">{c.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Table of Contents & Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm sticky top-24 space-y-4">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                Table of Contents
+              </h4>
+              <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                <li className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer">1. Introduction & Background</li>
+                <li className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer">2. Core Architectural Changes</li>
+                <li className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer">3. Practical Code Implementation</li>
+                <li className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer">4. Performance Benchmarks</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+      </article>
+    </>
   );
 };
 

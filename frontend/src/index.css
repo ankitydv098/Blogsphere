@@ -1,73 +1,235 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* =============================================
+   SEMANTIC COLOR TOKENS
+   Every component uses these — never hardcode.
+   ============================================= */
+:root {
+  /* Backgrounds */
+  --bg: #f8fafc;
+  --surface: #f1f5f9;
+  --card: #ffffff;
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
+
+  /* Text */
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  /* Brand */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --accent: #8b5cf6;
+
+  /* Functional */
+  --success: #10b981;
+  --danger: #ef4444;
+}
+
+.dark {
+  --bg: #0b0f19;
+  --surface: #111827;
+  --card: #0f172a;
+
+  --border: #1e293b;
+  --border-subtle: #0f172a;
+
+  --text: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --accent: #a78bfa;
+}
+
+/* =============================================
+   BASE STYLES
+   ============================================= */
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-    color: #0f172a;
-    background-color: #fafbfd;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-      radial-gradient(at 50% 0%, rgba(168, 85, 247, 0.04) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%);
-    background-attachment: fixed;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Light mode: clean white, no heavy gradients */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(99, 102, 241, 0.04) 0px, transparent 60%),
+      radial-gradient(ellipse at 100% 0%, rgba(139, 92, 246, 0.03) 0px, transparent 60%);
+  }
+
+  .dark body::before {
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(99, 102, 241, 0.10) 0px, transparent 60%),
+      radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.07) 0px, transparent 60%),
+      radial-gradient(ellipse at 100% 0%, rgba(236, 72, 153, 0.07) 0px, transparent 60%);
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
+    color: var(--text);
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.2);
   }
 }
 
-/* Custom modern scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* =============================================
+   CUSTOM SCROLLBAR
+   ============================================= */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* =============================================
+   GLASSMORPHISM UTILITIES
+   ============================================= */
+.glass-nav {
+  background: rgba(248, 250, 252, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
-::-webkit-scrollbar-track {
-  background: rgba(241, 245, 249, 0.5);
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-  border: 2px solid rgba(241, 245, 249, 0.5);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+.dark .glass-nav {
+  background: rgba(11, 15, 25, 0.88);
 }
 
-/* Card glassmorphism overlays */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(241, 245, 249, 0.6);
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(30, 41, 59, 0.8);
 }
 
-/* Gradient text utility */
+/* =============================================
+   TEXT GRADIENTS
+   ============================================= */
 .text-gradient {
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4338ca 70%, #4f46e5 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.text-gradient-purple {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+.text-gradient-cool {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 60%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Keyframes for soft float */
+/* =============================================
+   KEYFRAME ANIMATIONS
+   ============================================= */
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-  100% { transform: translateY(0px); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeInUp 0.4s ease forwards; }
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.04); }
+}
+.animate-pulse-glow { animation: pulseGlow 6s ease-in-out infinite; }
+
+/* =============================================
+   HIDE SCROLLBAR UTILITY
+   ============================================= */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* =============================================
+   AVATAR FALLBACK (initials)
+   ============================================= */
+.avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  user-select: none;
 }
 
-.animate-float {
-  animation: float 4s ease-in-out infinite;
+/* =============================================
+   PROSE CONTENT STYLES (Blog Details)
+   ============================================= */
+.prose-blog {
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 1rem;
 }
+.prose-blog h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.prose-blog p {
+  margin-bottom: 1.25rem;
+  color: var(--text-secondary);
+}
+.prose-blog code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  color: var(--primary);
+}
+.prose-blog pre {
+  background: #0d1117;
+  color: #e6edf3;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-size: 0.85em;
+  line-height: 1.7;
+  border: 1px solid #30363d;
+}
+.prose-blog strong { color: var(--text); font-weight: 700; }
+.prose-blog ul, .prose-blog ol {
+  margin: 1rem 0 1.25rem 1.5rem;
+  color: var(--text-secondary);
+}
+.prose-blog li { margin-bottom: 0.4rem; }

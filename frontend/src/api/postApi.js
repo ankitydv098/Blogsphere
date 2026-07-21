@@ -1,88 +1,51 @@
-import axiosInstance from './axiosConfig';
+import { mockService } from '../mock/mockService';
 
-// Fetch all posts with pagination and sorting
-export const getPosts = async (pageNumber = 0, pageSize = 10, sortBy = 'createdAt', sortDir = 'desc') => {
-  const response = await axiosInstance.get(`/api/posts`, {
-    params: { pageNumber, pageSize, sortBy, sortDir },
-  });
-  return response.data;
+export const getPosts = async (pageNumber = 0, pageSize = 6) => {
+  return await mockService.getPosts(pageNumber, pageSize);
 };
 
-// Fetch single post details
 export const getPostById = async (id) => {
-  const response = await axiosInstance.get(`/api/posts/${id}`);
-  return response.data;
+  return await mockService.getPostById(id);
 };
 
-// Create a new post
 export const createPost = async (postData) => {
-  const response = await axiosInstance.post(`/api/posts`, postData);
-  return response.data;
+  return await mockService.createPost(postData);
 };
 
-// Update an existing post
 export const updatePost = async (id, postData) => {
-  const response = await axiosInstance.put(`/api/posts/${id}`, postData);
-  return response.data;
+  return await mockService.updatePost(id, postData);
 };
 
-// Delete a post
 export const deletePost = async (id) => {
-  const response = await axiosInstance.delete(`/api/posts/${id}`);
-  return response.data;
+  return await mockService.deletePost(id);
 };
 
-// Fetch posts by a specific user (author)
-export const getPostsByUser = async (userId, pageNumber = 0, pageSize = 10) => {
-  const response = await axiosInstance.get(`/api/users/${userId}/posts`, {
-    params: { pageNumber, pageSize },
-  });
-  return response.data;
+export const getPostsByUser = async (userId, pageNumber = 0, pageSize = 6) => {
+  return await mockService.getPostsByUser(userId, pageNumber, pageSize);
 };
 
-// Fetch posts by a specific category
-export const getPostsByCategory = async (categoryId, pageNumber = 0, pageSize = 10) => {
-  const response = await axiosInstance.get(`/api/categories/${categoryId}/posts`, {
-    params: { pageNumber, pageSize },
-  });
-  return response.data;
+export const getPostsByCategory = async (categoryId, pageNumber = 0, pageSize = 6) => {
+  return await mockService.getPostsByCategory(categoryId, pageNumber, pageSize);
 };
 
-// Search posts by keyword
-export const searchPosts = async (keyword, pageNumber = 0, pageSize = 10) => {
-  const response = await axiosInstance.get(`/api/posts/search`, {
-    params: { keyword, pageNumber, pageSize },
-  });
-  return response.data;
+export const searchPosts = async (keyword, pageNumber = 0, pageSize = 6) => {
+  return await mockService.searchPosts(keyword, pageNumber, pageSize);
 };
 
-// Upload post image
 export const uploadPostImage = async (id, imageFile) => {
-  const formData = new FormData();
-  formData.append('image', imageFile);
-  
-  const response = await axiosInstance.post(`/api/posts/${id}/image`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
+  // Mock image upload return image URL
+  return { imageName: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80' };
 };
 
-// Fetch comments for a post
 export const getPostComments = async (postId) => {
-  const response = await axiosInstance.get(`/api/posts/${postId}/comments`);
-  return response.data;
+  return await mockService.getPostComments(postId);
 };
 
-// Add a comment to a post
 export const addComment = async (postId, commentData) => {
-  const response = await axiosInstance.post(`/api/posts/${postId}/comments`, commentData);
-  return response.data;
+  const text = typeof commentData === 'string' ? commentData : commentData.content;
+  return await mockService.addComment(postId, text);
 };
 
-// Delete a comment
 export const deleteComment = async (commentId) => {
-  const response = await axiosInstance.delete(`/api/comments/${commentId}`);
-  return response.data;
+  return { success: true };
 };

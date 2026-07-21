@@ -1,274 +1,151 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPostById, updatePost, uploadPostImage } from '../api/postApi';
+import { getPostById, updatePost } from '../api/postApi';
 import { getCategories } from '../api/categoryApi';
-import { AuthContext } from '../context/AuthContext';
-import Loader from '../components/Loader';
-import Button from '../components/Button';
-import { Upload, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { ArrowLeft, Save, Edit3, Eye } from 'lucide-react';
+
+const COVER_PRESETS = [
+  'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80'
+];
 
 const EditBlog = () => {
   const { id } = useParams();
-  const { user } = useContext(AuthContext);
-  
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [imageName, setImageName] = useState(COVER_PRESETS[0]);
   const [categories, setCategories] = useState([]);
-  
-  // Existing image info
-  const [existingImage, setExistingImage] = useState(null);
-  
-  // New image upload info
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  
+  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const navigate = useNavigate();
 
-  // Load Categories & Current Post details
   useEffect(() => {
-    const loadData = async () => {
+    const initData = async () => {
+      setLoading(true);
       try {
-        const categoriesList = await getCategories();
-        setCategories(categoriesList);
+        const cats = await getCategories();
+        setCategories(cats || []);
 
-        const currentPost = await getPostById(id);
-        
-        // Ownership validation
-        if (currentPost.user.email !== user.email) {
-          toast.error('You are not authorized to edit this post');
-          navigate('/dashboard');
-          return;
-        }
-
-        setTitle(currentPost.title);
-        setContent(currentPost.content);
-        setCategoryId(currentPost.category ? currentPost.category.id.toString() : '');
-        setExistingImage(currentPost.imageName);
-      } catch (error) {
-        toast.error('Failed to load post data');
-        navigate('/dashboard');
+        const post = await getPostById(id);
+        setTitle(post.title);
+        setContent(post.content);
+        setCategoryId(post.category?.id || (cats[0] && cats[0].id));
+        setImageName(post.imageName || COVER_PRESETS[0]);
+      } catch (err) {
+        console.error('Failed to load post for editing', err);
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, [id, navigate, user]);
+    initData();
+  }, [id]);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size exceeds the 5MB limit');
-        return;
-      }
-      
-      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) {
-        toast.error('Invalid image format (allowed: JPG, PNG, GIF, WEBP)');
-        return;
-      }
-
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-  };
-
-  const getExistingImageUrl = (imageName) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    if (!imageName || imageName === 'default.png') {
-      return null;
-    }
-    return `${baseUrl}/api/images/${imageName}`;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim() || !categoryId) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+    if (!title.trim() || !content.trim()) return;
 
-    setIsLoading(true);
+    setSubmitting(true);
     try {
-      const updatedData = {
-        title: title.trim(),
-        content: content.trim(),
+      await updatePost(id, {
+        title,
+        content,
         categoryId: Number(categoryId),
-      };
-
-      await updatePost(id, updatedData);
-
-      // Handle image upload if a new one is selected
-      if (imageFile) {
-        await uploadPostImage(id, imageFile);
-      }
-
-      toast.success('Blog post updated successfully!');
-      navigate('/dashboard');
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to update post';
-      toast.error(message);
+        imageName
+      });
+      navigate(`/blog/${id}`);
+    } catch (err) {
+      console.error('Failed to update post', err);
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (loading) return <Loader />;
+  if (loading) return <div className="p-10 text-center text-xs text-slate-400">Loading editor...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      
-      <div className="space-y-2 mb-8">
-        <h1 className="text-3xl font-black tracking-tight text-primary-900">
-          Edit Story
-        </h1>
-        <p className="text-sm text-primary-500">
-          Make updates to your published article contents.
-        </p>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </button>
+
+        <button
+          onClick={handleUpdate}
+          disabled={submitting || !title.trim() || !content.trim()}
+          className="px-5 py-2 rounded-full font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-md shadow-indigo-500/20"
+        >
+          <Save className="h-3.5 w-3.5" />
+          <span>Save Changes</span>
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Title */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold uppercase tracking-wider text-primary-700">Title</label>
-          <input
-            type="text"
-            placeholder="Title of your post..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-white border border-primary-200 rounded-2xl py-3 px-4 text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary-900 focus:border-primary-900"
-            required
-          />
-        </div>
+      <form className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+        <textarea
+          rows={2}
+          placeholder="Article Title..."
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full bg-transparent text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none resize-none"
+        ></textarea>
 
-        {/* Category & Cover Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Category Dropdown */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-primary-700">Category</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+              Category
+            </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full bg-white border border-primary-200 rounded-full py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary-900 focus:border-primary-900"
-              required
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
             >
-              <option value="" disabled>Select a category</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.categoryName}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.categoryName}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Cover image file input */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-primary-700">Cover Image</label>
-            {!imagePreview ? (
-              <div className="relative border border-dashed border-primary-300 rounded-full hover:bg-primary-50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          <div>
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+              Cover Image Preset
+            </label>
+            <div className="flex gap-2">
+              {COVER_PRESETS.map((preset, idx) => (
+                <img
+                  key={idx}
+                  src={preset}
+                  alt={`Preset ${idx}`}
+                  onClick={() => setImageName(preset)}
+                  className={`h-9 w-14 rounded-xl object-cover cursor-pointer border-2 transition-all ${
+                    imageName === preset ? 'border-indigo-600 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
                 />
-                <div className="flex items-center justify-center gap-2 py-2 px-4 text-sm font-semibold text-primary-600">
-                  <Upload className="h-4 w-4" />
-                  <span>Replace cover image...</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-2 border border-primary-200 rounded-full bg-primary-50">
-                <span className="text-xs truncate max-w-[200px] font-medium text-primary-700 pl-3">{imageFile.name}</span>
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="p-1 rounded-full hover:bg-primary-200 text-primary-500 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Preview Panel (new preview overrides existing cover preview) */}
-        {imagePreview ? (
-          <div className="relative rounded-2xl overflow-hidden bg-primary-50 border border-primary-100 max-h-[300px]">
-            <img
-              src={imagePreview}
-              alt="New Cover Preview"
-              className="w-full h-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={removeImage}
-              className="absolute top-4 right-4 p-2 bg-primary-900/80 text-white rounded-full hover:bg-primary-950 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : getExistingImageUrl(existingImage) ? (
-          <div className="space-y-1">
-            <label className="text-[10px] uppercase font-bold text-primary-400">Current Cover Image</label>
-            <div className="rounded-2xl overflow-hidden bg-primary-50 border border-primary-100 max-h-[300px]">
-              <img
-                src={getExistingImageUrl(existingImage)}
-                alt="Current Cover"
-                className="w-full h-full object-cover"
-              />
+              ))}
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {/* Content Body Textarea */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold uppercase tracking-wider text-primary-700">Content</label>
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
+            Content (Supports Markdown)
+          </label>
           <textarea
-            placeholder="Tell your story..."
-            rows="12"
+            rows={14}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full bg-white border border-primary-200 rounded-2xl py-4 px-4 text-base focus:outline-none focus:ring-1 focus:ring-primary-900 focus:border-primary-900 placeholder-primary-300 resize-none font-sans"
-            required
-          />
+            className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none"
+          ></textarea>
         </div>
-
-        {/* Submit Panel */}
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/dashboard')}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isLoading}
-          >
-            Save Changes
-          </Button>
-        </div>
-
       </form>
-
     </div>
   );
 };

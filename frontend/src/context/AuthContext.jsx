@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { loginUser, registerUser } from '../api/authApi';
+import { mockService } from '../mock/mockService';
+import { ANKIT } from '../mock/mockData';
 
 export const AuthContext = createContext();
 
@@ -8,71 +9,78 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize and check if user is already logged in
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    if (storedUser && storedToken) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.name !== 'Ankit Kumar') {
+          // Reset to default portfolio identity
+          const newToken = 'mock-jwt-ankit-kumar';
+          setUser(ANKIT);
+          setToken(newToken);
+          localStorage.setItem('user', JSON.stringify(ANKIT));
+          localStorage.setItem('token', newToken);
+        } else {
+          setUser(parsed);
+          setToken(storedToken);
+        }
+      } catch (e) {
+        const newToken = 'mock-jwt-ankit-kumar';
+        setUser(ANKIT);
+        setToken(newToken);
+        localStorage.setItem('user', JSON.stringify(ANKIT));
+        localStorage.setItem('token', newToken);
+      }
+    } else {
+      // Default: Ankit Kumar's portfolio session
+      const newToken = 'mock-jwt-ankit-kumar';
+      setUser(ANKIT);
+      setToken(newToken);
+      localStorage.setItem('user', JSON.stringify(ANKIT));
+      localStorage.setItem('token', newToken);
     }
     setLoading(false);
   }, []);
 
-  // Login handler
   const login = async (credentials) => {
-    try {
-      const data = await loginUser(credentials);
-      // Save token and user to state and localStorage
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      return { success: true };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Invalid email or password';
-      return { success: false, error: message };
-    }
+    // For demo purposes — always resolves as Ankit Kumar
+    const newToken = `mock-token-${Date.now()}`;
+    setUser(ANKIT);
+    setToken(newToken);
+    mockService.setCurrentUser(ANKIT);
+    localStorage.setItem('user', JSON.stringify(ANKIT));
+    localStorage.setItem('token', newToken);
+    return { success: true };
   };
 
-  // Register handler
   const register = async (userData) => {
-    try {
-      const data = await registerUser(userData);
-      // Automatically log in user after registration
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      return { success: true };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
-      return { success: false, error: message };
-    }
+    const newUser = {
+      ...ANKIT,
+      id: Date.now(),
+      name: userData.name || ANKIT.name,
+      email: userData.email || ANKIT.email,
+    };
+    const newToken = `mock-token-${Date.now()}`;
+    setUser(newUser);
+    setToken(newToken);
+    mockService.setCurrentUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem('token', newToken);
+    return { success: true };
   };
 
-  // Logout handler
   const logout = () => {
-    setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
-  // Check if current user is admin
   const isAdmin = () => {
-    if (!user) return false;
-    // Spring Boot seeds roles: "ROLE_ADMIN" or "ROLE_USER" (we check in auth response)
-    // Wait, the roles might be stored under user details, or we can check authorities.
-    // The Spring Boot database seeding configures the User entity's roles relation.
-    // Let's see: the user DTO returned by spring boot might not explicitly list roles unless we expose them.
-    // Wait! Let's check how the UserResponse is defined:
-    // UserResponse: Long id, String name, String email, LocalDateTime createdAt, LocalDateTime updatedAt
-    // Oh, the UserResponse does NOT contain roles!
-    // But wait, the admin user has email "admin@blogsphere.com". We can check if email is "admin@blogsphere.com"
-    // or we can allow checking email. Let's make a generic check: email contains "admin@" or matches "admin@blogsphere.com".
-    return user.email === 'admin@blogsphere.com';
+    return user && (user.role === 'ROLE_ADMIN' || user.email === 'ankit@blogsphere.com');
   };
 
   return (
@@ -81,7 +89,7 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         loading,
-        isAuthenticated: !!token,
+        isAuthenticated: !!user,
         login,
         register,
         logout,

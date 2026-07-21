@@ -55,7 +55,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     @Query("SELECT p FROM Post p WHERE " +
            "LOWER(p.title) LIKE LOWER(CONCAT('%', :titleKeyword, '%')) OR " +
-           "p.content LIKE CONCAT('%', :contentKeyword, '%')")
+           "LOWER(p.content) LIKE LOWER(CONCAT('%', :contentKeyword, '%'))")
     Page<Post> searchPosts(
             @Param("titleKeyword")   String titleKeyword,
             @Param("contentKeyword") String contentKeyword,

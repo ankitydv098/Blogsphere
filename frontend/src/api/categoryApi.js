@@ -1,31 +1,10 @@
-import axiosInstance from './axiosConfig';
+import { mockService } from '../mock/mockService';
 
-// Fetch all categories
 export const getCategories = async () => {
-  const response = await axiosInstance.get('/api/categories');
-  return response.data;
+  return await mockService.getCategories();
 };
 
-// Fetch single category
 export const getCategoryById = async (id) => {
-  const response = await axiosInstance.get(`/api/categories/${id}`);
-  return response.data;
-};
-
-// Create category (Admin only)
-export const createCategory = async (categoryData) => {
-  const response = await axiosInstance.post('/api/categories', categoryData);
-  return response.data;
-};
-
-// Update category (Admin only)
-export const updateCategory = async (id, categoryData) => {
-  const response = await axiosInstance.put(`/api/categories/${id}`, categoryData);
-  return response.data;
-};
-
-// Delete category (Admin only)
-export const deleteCategory = async (id) => {
-  const response = await axiosInstance.delete(`/api/categories/${id}`);
-  return response.data;
+  const categories = await mockService.getCategories();
+  return categories.find(c => c.id === Number(id));
 };

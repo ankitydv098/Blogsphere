@@ -19,26 +19,20 @@ import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen transition-colors duration-200" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       {/* Toast Notification Container */}
       <Toaster
         position="top-center"
         toastOptions={{
           duration: 3500,
           style: {
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '14px',
-            fontWeight: '500',
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            fontSize: '13px',
+            fontWeight: '600',
             borderRadius: '9999px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
             background: '#0f172a',
             color: '#ffffff',
-          },
-          success: {
-            iconTheme: {
-              primary: '#ffffff',
-              secondary: '#0f172a',
-            },
           },
         }}
       />
@@ -46,41 +40,22 @@ function App() {
       {/* Navigation Header */}
       <Navbar />
 
-      {/* Main Pages Content */}
+      {/* Main Content Viewport */}
       <main className="flex-grow">
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/blog/:id" element={<BlogDetails />} />
           <Route path="/posts/:id" element={<BlogDetails />} />
           <Route path="/profile/:id" element={<Profile />} />
 
-          {/* Protected Routes (Authenticated Users Only) */}
-          <Route
-            path="/write"
-            element={
-              <ProtectedRoute>
-                <CreateBlog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/posts/edit/:id"
-            element={
-              <ProtectedRoute>
-                <EditBlog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* Protected Routes */}
+          <Route path="/write" element={<ProtectedRoute><CreateBlog /></ProtectedRoute>} />
+          <Route path="/edit/:id" element={<ProtectedRoute><EditBlog /></ProtectedRoute>} />
+          <Route path="/posts/edit/:id" element={<ProtectedRoute><EditBlog /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
           {/* Catch-all Fallback */}
           <Route path="*" element={<Home />} />
